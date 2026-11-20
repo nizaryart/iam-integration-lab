@@ -1,0 +1,101 @@
+# IAM integration lab: Samba AD -> Keycloak (LDAP federation) -> OIDC and SAML apps,
+# behind a TLS reverse proxy, on three segmented networks.
+name: iamlab
+
+networks:
+  edge:        # user-facing: proxy and applications
+  identity:    # proxy <-> Keycloak
+  directory:   # Keycloak <-> domain controller only
+    internal: true
+
+volumes:
+  dc-data:
+  kc-data:
+
+services:
+  dc1:
+    build: ./dc
+    hostname: dc1
+    cap_add: [SYS_ADMIN]   # Samba stores NT ACLs in security.* xattrs (SYSVOL); no full privileged mode
+    domainname: corp.lab
+    environment:
+      AD_ADMIN_PASSWORD: ${AD_ADMIN_PASSWORD}
+    volumes:
+      - dc-data:/var/lib/samba
+      - ./certs:/certs:ro
+    networks:
+      directory:
+        aliases: [dc1.corp.lab]
+    healthcheck:
+      test: ["CMD-SHELL", "LDAPTLS_CACERT=/certs/ca.pem ldapsearch -H ldaps://dc1.corp.lab -x -s base -b '' namingContexts >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    # No ports published: the directory is reachable only from Keycloak.
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      KC_HOSTNAME: https://sso.localtest.me:7443
+      KC_HOSTNAME_ADMIN: https://sso-admin.localtest.me:7444
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_TRUSTSTORE_PATHS: /certs/ca.pem
+      KC_LOG_CONSOLE_OUTPUT: json
+      KC_LOG_LEVEL: INFO,org.keycloak.events:DEBUG
+    volumes:
+      - kc-data:/opt/keycloak/data
+      - ./certs/ca.pem:/certs/ca.pem:ro
+    networks: [identity, directory]
+    depends_on:
+      dc1: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  proxy:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/proxy.pem:/etc/nginx/tls/proxy.pem:ro
+      - ./certs/proxy.key:/etc/nginx/tls/proxy.key:ro
+    ports:
+      - "127.0.0.1:7443:7443"    # public listener: SSO login + applications
+      - "127.0.0.1:7444:7444"    # management listener: Keycloak admin console
+    networks:
+      edge:
+        aliases: [sso.localtest.me, portal.localtest.me, saml.localtest.me]
+      identity:
+        aliases: [sso.localtest.me, portal.localtest.me, saml.localtest.me]
+    depends_on:
+      keycloak: {condition: service_healthy}
+
+  portal-oidc:
+    build: ./apps/portal-oidc
+    environment:
+      ISSUER: https://sso.localtest.me:7443/realms/corp
+      CLIENT_ID: portal-oidc
+      CLIENT_SECRET: ${PORTAL_OIDC_CLIENT_SECRET}
+      BASE_URL: https://portal.localtest.me:7443
+      FLASK_SECRET: ${FLASK_SECRET_OIDC}
+      REQUESTS_CA_BUNDLE: /certs/ca.pem
+    volumes:
+      - ./certs/ca.pem:/certs/ca.pem:ro
+    networks: [edge]
+
+  portal-saml:
+    build: ./apps/portal-saml
+    environment:
+      IDP_METADATA_URL: https://sso.localtest.me:7443/realms/corp/protocol/saml/descriptor
+      BASE_URL: https://saml.localtest.me:7443
+      FLASK_SECRET: ${FLASK_SECRET_SAML}
+      REQUESTS_CA_BUNDLE: /certs/ca.pem
+    volumes:
+      - ./certs/ca.pem:/certs/ca.pem:ro
+    networks: [edge]

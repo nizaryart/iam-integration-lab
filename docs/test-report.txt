@@ -1,0 +1,53 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /home/nizar/Internship/repos/iam-integration-lab/.venv/bin/python
+rootdir: /home/nizar/Internship/repos/iam-integration-lab/tests
+configfile: pytest.ini
+collecting ... collected 45 items
+
+tests/test_01_network.py::test_applications_cannot_reach_the_directory PASSED
+tests/test_01_network.py::test_applications_cannot_bypass_the_proxy_to_keycloak PASSED
+tests/test_01_network.py::test_keycloak_reaches_the_directory_over_ldaps_only PASSED
+tests/test_01_network.py::test_directory_is_not_published_on_the_host PASSED
+tests/test_01_network.py::test_plaintext_ldap_bind_is_refused PASSED
+tests/test_01_network.py::test_ldaps_certificate_is_verified PASSED
+tests/test_01_network.py::test_admin_console_not_exposed_on_public_listener PASSED
+tests/test_01_network.py::test_unknown_virtual_host_is_dropped PASSED
+tests/test_02_oidc_sso.py::test_finance_user_gets_finance_only PASSED
+tests/test_02_oidc_sso.py::test_hr_user_gets_hr_only PASSED
+tests/test_02_oidc_sso.py::test_wrong_password_does_not_log_in PASSED
+tests/test_02_oidc_sso.py::test_sso_session_is_reused_by_second_app PASSED
+tests/test_02_oidc_sso.py::test_password_grant_is_disabled PASSED
+tests/test_02_oidc_sso.py::test_unregistered_redirect_uri_is_refused PASSED
+tests/test_02_oidc_sso.py::test_pkce_is_mandatory PASSED
+tests/test_02_oidc_sso.py::test_open_redirect_after_login_is_neutralised PASSED
+tests/test_03_tokens.py::test_valid_token_and_group_authorization PASSED
+tests/test_03_tokens.py::test_access_tokens_are_short_lived PASSED
+tests/test_03_tokens.py::test_missing_token PASSED
+tests/test_03_tokens.py::test_alg_none_is_rejected PASSED
+tests/test_03_tokens.py::test_modified_payload_breaks_signature PASSED
+tests/test_03_tokens.py::test_token_signed_by_attacker_key_is_rejected PASSED
+tests/test_03_tokens.py::test_hs256_key_confusion_is_rejected PASSED
+tests/test_03_tokens.py::test_token_issued_to_another_client_is_rejected PASSED
+tests/test_04_mfa.py::test_admin_is_forced_to_enrol_totp_then_gets_admin_area PASSED
+tests/test_04_mfa.py::test_admin_login_requires_the_totp_code PASSED
+tests/test_04_mfa.py::test_admin_login_with_wrong_code_fails_and_right_code_works PASSED
+tests/test_04_mfa.py::test_standard_user_is_not_asked_for_mfa PASSED
+tests/test_05_lifecycle.py::test_joiner_gets_access_from_ad_group_alone PASSED
+tests/test_05_lifecycle.py::test_mover_loses_old_access_at_next_login PASSED
+tests/test_05_lifecycle.py::test_leaver_new_logins_refused_and_open_sessions_revoked PASSED
+tests/test_05_lifecycle.py::test_disabling_in_ad_alone_leaves_sessions_open PASSED
+tests/test_06_bruteforce_detection.py::test_bruteforce_locks_account_and_is_detected PASSED
+tests/test_06_bruteforce_detection.py::test_leaver_sign_in_attempt_is_correlated_with_ad PASSED
+tests/test_06_bruteforce_detection.py::test_password_spray_is_detected PASSED
+tests/test_06_bruteforce_detection.py::test_privilege_change_is_visible PASSED
+tests/test_07_saml.py::test_finance_user_gets_finance_documents_only PASSED
+tests/test_07_saml.py::test_hr_user_gets_hr_documents_only PASSED
+tests/test_07_saml.py::test_assertion_and_response_are_signed_with_rsa_sha256 PASSED
+tests/test_07_saml.py::test_only_needed_attributes_are_released PASSED
+tests/test_07_saml.py::test_modified_group_attribute_is_rejected PASSED
+tests/test_07_saml.py::test_modified_name_id_is_rejected PASSED
+tests/test_07_saml.py::test_replayed_response_is_rejected PASSED
+tests/test_07_saml.py::test_response_stolen_into_another_browser_is_rejected PASSED
+tests/test_07_saml.py::test_unsolicited_response_is_rejected PASSED
+
+======================== 45 passed in 71.17s (0:01:11) =========================
